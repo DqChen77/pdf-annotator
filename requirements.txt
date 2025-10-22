@@ -1,0 +1,10 @@
+# GUI版本额外需要的依赖（Windows打包用）
+pyinstaller>=5.0.0
+
+# 基础依赖（与requirements.txt相同）
+pymupdf>=1.24.0
+openai>=1.3.0
+python-dotenv>=1.0.0
+tqdm>=4.66.1
+tiktoken>=0.5.1
+
