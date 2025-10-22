@@ -35,6 +35,7 @@ ENV/
 
 # Environment variables
 .env
+gui_config.json
 
 # Output files
 *_annotated.pdf

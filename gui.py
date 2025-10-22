@@ -69,10 +69,20 @@ class PDFAnnotatorGUI:
             'model': self.model.get()
         }
         try:
+            # 保存 JSON 配置文件
             with open("gui_config.json", 'w', encoding='utf-8') as f:
                 json.dump(config, f, indent=2)
-        except:
-            pass
+            
+            # 同时保存 .env 文件（确保配置被加载）
+            with open(".env", 'w', encoding='utf-8') as f:
+                f.write(f"OPENAI_API_KEY={self.api_key.get()}\n")
+                if self.api_base_url.get():
+                    f.write(f"OPENAI_BASE_URL={self.api_base_url.get()}\n")
+                f.write(f"OPENAI_MODEL={self.model.get()}\n")
+            
+            self.log("✅ 配置已保存")
+        except Exception as e:
+            self.log(f"⚠️ 保存配置时出错: {str(e)}")
     
     def create_widgets(self):
         """创建界面组件"""
@@ -337,13 +347,17 @@ class PDFAnnotatorGUI:
             self.set_status("正在使用AI分析...")
             self.log("\n2️⃣ 正在使用AI分析内容...")
             
-            # 设置环境变量
+            # 设置环境变量（确保配置可用）
             os.environ['OPENAI_API_KEY'] = self.api_key.get()
             if self.api_base_url.get():
                 os.environ['OPENAI_BASE_URL'] = self.api_base_url.get()
             os.environ['OPENAI_MODEL'] = self.model.get()
             
-            analyzer = AIAnalyzer()
+            # 直接传入配置参数，更可靠
+            analyzer = AIAnalyzer(
+                api_key=self.api_key.get(),
+                model=self.model.get()
+            )
             self.log(f"   - 使用模型: {analyzer.model}")
             
             analysis_results = analyzer.analyze_document(text_blocks)
