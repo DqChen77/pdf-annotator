@@ -22,9 +22,8 @@ wheels/
 
 # Virtual Environment
 venv/
-env/
 ENV/
-.venv/
+env/
 
 # IDE
 .vscode/
@@ -33,23 +32,18 @@ ENV/
 *.swo
 *~
 
-# Environment variables
-.env
-gui_config.json
-
-# Output files
-*_annotated.pdf
-outputs/
-
 # OS
 .DS_Store
 Thumbs.db
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Logs
+# Project specific
+*.pdf
+!example.pdf
+.env
 *.log
 
+# AI response logs
+logs/
+*.json
+!package*.json
+!tsconfig*.json

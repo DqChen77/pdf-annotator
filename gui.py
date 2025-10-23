@@ -39,6 +39,20 @@ class PDFAnnotatorGUI:
         self.output_path = tk.StringVar()
         self.is_processing = False
         
+        # 标注设置变量
+        self.highlight_count_min = tk.IntVar(value=20)
+        self.highlight_count_max = tk.IntVar(value=30)
+        self.summary_count_min = tk.IntVar(value=5)
+        self.summary_count_max = tk.IntVar(value=10)
+        self.summary_word_min = tk.IntVar(value=40)
+        self.summary_word_max = tk.IntVar(value=80)
+        self.term_level = tk.StringVar(value="moderate")
+        
+        # 颜色设置（RGB 0-255格式，方便GUI显示）
+        self.highlight_color = [255, 255, 0]  # 黄色
+        self.term_color = [128, 204, 255]  # 浅蓝色
+        self.summary_color = [255, 179, 179]  # 淡红色
+        
         # 加载配置
         self.load_config()
         
@@ -55,18 +69,48 @@ class PDFAnnotatorGUI:
             try:
                 with open(config_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)
+                    # API配置
                     self.api_key.set(config.get('api_key', ''))
                     self.api_base_url.set(config.get('api_base_url', 'https://api.zhizengzeng.com/v1'))
                     self.model.set(config.get('model', 'gpt-4o'))
+                    
+                    # 标注设置
+                    self.highlight_count_min.set(config.get('highlight_count_min', 20))
+                    self.highlight_count_max.set(config.get('highlight_count_max', 30))
+                    self.summary_count_min.set(config.get('summary_count_min', 5))
+                    self.summary_count_max.set(config.get('summary_count_max', 10))
+                    self.summary_word_min.set(config.get('summary_word_min', 40))
+                    self.summary_word_max.set(config.get('summary_word_max', 80))
+                    self.term_level.set(config.get('term_level', 'moderate'))
+                    
+                    # 颜色配置
+                    self.highlight_color = config.get('highlight_color', [255, 255, 0])
+                    self.term_color = config.get('term_color', [128, 204, 255])
+                    self.summary_color = config.get('summary_color', [255, 179, 179])
             except:
                 pass
     
     def save_config(self):
         """保存配置文件"""
         config = {
+            # API配置
             'api_key': self.api_key.get(),
             'api_base_url': self.api_base_url.get(),
-            'model': self.model.get()
+            'model': self.model.get(),
+            
+            # 标注设置
+            'highlight_count_min': self.highlight_count_min.get(),
+            'highlight_count_max': self.highlight_count_max.get(),
+            'summary_count_min': self.summary_count_min.get(),
+            'summary_count_max': self.summary_count_max.get(),
+            'summary_word_min': self.summary_word_min.get(),
+            'summary_word_max': self.summary_word_max.get(),
+            'term_level': self.term_level.get(),
+            
+            # 颜色配置
+            'highlight_color': self.highlight_color,
+            'term_color': self.term_color,
+            'summary_color': self.summary_color
         }
         try:
             # 保存 JSON 配置文件
@@ -192,6 +236,13 @@ class PDFAnnotatorGUI:
             width=20
         )
         self.stop_button.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(
+            button_frame,
+            text="⚙️ 标注设置",
+            command=self.open_settings,
+            width=15
+        ).pack(side=tk.RIGHT, padx=5)
         
         ttk.Button(
             button_frame,
@@ -353,14 +404,37 @@ class PDFAnnotatorGUI:
                 os.environ['OPENAI_BASE_URL'] = self.api_base_url.get()
             os.environ['OPENAI_MODEL'] = self.model.get()
             
+            # 动态更新config中的颜色配置
+            import config
+            config.HIGHLIGHT_COLOR = tuple(c/255 for c in self.highlight_color)  # 转换为0-1范围
+            config.TERM_HIGHLIGHT_COLOR = tuple(c/255 for c in self.term_color)
+            config.SUMMARY_HIGHLIGHT_COLOR = tuple(c/255 for c in self.summary_color)
+            
+            # 生成自定义提示词
+            from config import get_dynamic_analysis_prompt
+            custom_prompt = get_dynamic_analysis_prompt(
+                highlight_min=self.highlight_count_min.get(),
+                highlight_max=self.highlight_count_max.get(),
+                summary_min=self.summary_count_min.get(),
+                summary_max=self.summary_count_max.get(),
+                summary_word_min=self.summary_word_min.get(),
+                summary_word_max=self.summary_word_max.get(),
+                term_level=self.term_level.get()
+            )
+            
+            self.log(f"   - 使用模型: {self.model.get()}")
+            self.log(f"   - 关键观点数量: {self.highlight_count_min.get()}-{self.highlight_count_max.get()}个")
+            self.log(f"   - 段落总结数量: {self.summary_count_min.get()}-{self.summary_count_max.get()}个")
+            self.log(f"   - 总结字数范围: {self.summary_word_min.get()}-{self.summary_word_max.get()}字")
+            self.log(f"   - 术语标注级别: {self.term_level.get()}")
+            
             # 直接传入配置参数，更可靠
             analyzer = AIAnalyzer(
                 api_key=self.api_key.get(),
                 model=self.model.get()
             )
-            self.log(f"   - 使用模型: {analyzer.model}")
             
-            analysis_results = analyzer.analyze_document(text_blocks)
+            analysis_results = analyzer.analyze_document(text_blocks, custom_prompt=custom_prompt)
             
             if not self.is_processing:
                 self.log("\n❌ 用户取消")
@@ -417,6 +491,225 @@ class PDFAnnotatorGUI:
             self.start_button.config(state=tk.NORMAL)
             self.stop_button.config(state=tk.DISABLED)
             self.progress.stop()
+    
+    def open_settings(self):
+        """打开设置窗口"""
+        settings_window = tk.Toplevel(self.root)
+        settings_window.title("标注设置")
+        settings_window.geometry("600x650")
+        settings_window.transient(self.root)
+        settings_window.grab_set()
+        
+        # 创建notebook（标签页）
+        notebook = ttk.Notebook(settings_window)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # 1. 数量设置标签页
+        count_frame = ttk.Frame(notebook, padding="20")
+        notebook.add(count_frame, text="📊 数量设置")
+        
+        # 关键观点数量
+        ttk.Label(count_frame, text="关键观点高亮数量", font=("Arial", 11, "bold")).grid(
+            row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        
+        ttk.Label(count_frame, text="最小数量:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        ttk.Spinbox(count_frame, from_=10, to=50, textvariable=self.highlight_count_min, width=10).grid(
+            row=1, column=1, sticky=tk.W, padx=5)
+        ttk.Label(count_frame, text="个").grid(row=1, column=2, sticky=tk.W)
+        
+        ttk.Label(count_frame, text="最大数量:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        ttk.Spinbox(count_frame, from_=10, to=50, textvariable=self.highlight_count_max, width=10).grid(
+            row=2, column=1, sticky=tk.W, padx=5)
+        ttk.Label(count_frame, text="个").grid(row=2, column=2, sticky=tk.W)
+        
+        ttk.Separator(count_frame, orient='horizontal').grid(
+            row=3, column=0, columnspan=3, sticky='ew', pady=15)
+        
+        # 段落总结数量
+        ttk.Label(count_frame, text="段落总结数量", font=("Arial", 11, "bold")).grid(
+            row=4, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        
+        ttk.Label(count_frame, text="最小数量:").grid(row=5, column=0, sticky=tk.W, pady=5)
+        ttk.Spinbox(count_frame, from_=3, to=20, textvariable=self.summary_count_min, width=10).grid(
+            row=5, column=1, sticky=tk.W, padx=5)
+        ttk.Label(count_frame, text="个").grid(row=5, column=2, sticky=tk.W)
+        
+        ttk.Label(count_frame, text="最大数量:").grid(row=6, column=0, sticky=tk.W, pady=5)
+        ttk.Spinbox(count_frame, from_=3, to=20, textvariable=self.summary_count_max, width=10).grid(
+            row=6, column=1, sticky=tk.W, padx=5)
+        ttk.Label(count_frame, text="个").grid(row=6, column=2, sticky=tk.W)
+        
+        ttk.Separator(count_frame, orient='horizontal').grid(
+            row=7, column=0, columnspan=3, sticky='ew', pady=15)
+        
+        # 总结字数
+        ttk.Label(count_frame, text="段落总结字数", font=("Arial", 11, "bold")).grid(
+            row=8, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        
+        ttk.Label(count_frame, text="最小字数:").grid(row=9, column=0, sticky=tk.W, pady=5)
+        ttk.Spinbox(count_frame, from_=20, to=100, textvariable=self.summary_word_min, width=10).grid(
+            row=9, column=1, sticky=tk.W, padx=5)
+        ttk.Label(count_frame, text="字").grid(row=9, column=2, sticky=tk.W)
+        
+        ttk.Label(count_frame, text="最大字数:").grid(row=10, column=0, sticky=tk.W, pady=5)
+        ttk.Spinbox(count_frame, from_=20, to=150, textvariable=self.summary_word_max, width=10).grid(
+            row=10, column=1, sticky=tk.W, padx=5)
+        ttk.Label(count_frame, text="字").grid(row=10, column=2, sticky=tk.W)
+        
+        ttk.Separator(count_frame, orient='horizontal').grid(
+            row=11, column=0, columnspan=3, sticky='ew', pady=15)
+        
+        # 术语标注积极程度
+        ttk.Label(count_frame, text="术语标注积极程度", font=("Arial", 11, "bold")).grid(
+            row=12, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        
+        term_levels = [
+            ("保守 - 只标注核心专业术语", "conservative"),
+            ("适中 - 标注专业术语和较难词汇 (推荐)", "moderate"),
+            ("积极 - 标注所有可能困难的词汇", "aggressive")
+        ]
+        
+        for i, (text, value) in enumerate(term_levels):
+            ttk.Radiobutton(
+                count_frame, 
+                text=text, 
+                variable=self.term_level, 
+                value=value
+            ).grid(row=13+i, column=0, columnspan=3, sticky=tk.W, pady=2)
+        
+        # 2. 颜色设置标签页
+        color_frame = ttk.Frame(notebook, padding="20")
+        notebook.add(color_frame, text="🎨 颜色设置")
+        
+        def choose_color(color_type):
+            """选择颜色"""
+            from tkinter import colorchooser
+            if color_type == "highlight":
+                current = self.highlight_color
+            elif color_type == "term":
+                current = self.term_color
+            else:
+                current = self.summary_color
+            
+            # 转换为十六进制
+            current_hex = f"#{current[0]:02x}{current[1]:02x}{current[2]:02x}"
+            color = colorchooser.askcolor(initialcolor=current_hex, title="选择颜色")
+            
+            if color[0]:  # 如果用户选择了颜色
+                rgb = [int(c) for c in color[0]]
+                if color_type == "highlight":
+                    self.highlight_color = rgb
+                    highlight_preview.config(bg=color[1])
+                elif color_type == "term":
+                    self.term_color = rgb
+                    term_preview.config(bg=color[1])
+                else:
+                    self.summary_color = rgb
+                    summary_preview.config(bg=color[1])
+        
+        # 关键观点颜色
+        ttk.Label(color_frame, text="关键观点高亮颜色", font=("Arial", 11, "bold")).grid(
+            row=0, column=0, sticky=tk.W, pady=(0, 5))
+        
+        highlight_frame = ttk.Frame(color_frame)
+        highlight_frame.grid(row=1, column=0, sticky=tk.W, pady=10)
+        
+        highlight_preview = tk.Label(
+            highlight_frame, 
+            text="  预览  ", 
+            bg=f"#{self.highlight_color[0]:02x}{self.highlight_color[1]:02x}{self.highlight_color[2]:02x}",
+            width=15,
+            relief=tk.RAISED
+        )
+        highlight_preview.pack(side=tk.LEFT, padx=(0, 10))
+        
+        ttk.Button(
+            highlight_frame, 
+            text="选择颜色", 
+            command=lambda: choose_color("highlight")
+        ).pack(side=tk.LEFT)
+        
+        # 术语高亮颜色
+        ttk.Label(color_frame, text="术语高亮颜色", font=("Arial", 11, "bold")).grid(
+            row=2, column=0, sticky=tk.W, pady=(15, 5))
+        
+        term_frame = ttk.Frame(color_frame)
+        term_frame.grid(row=3, column=0, sticky=tk.W, pady=10)
+        
+        term_preview = tk.Label(
+            term_frame, 
+            text="  预览  ", 
+            bg=f"#{self.term_color[0]:02x}{self.term_color[1]:02x}{self.term_color[2]:02x}",
+            width=15,
+            relief=tk.RAISED
+        )
+        term_preview.pack(side=tk.LEFT, padx=(0, 10))
+        
+        ttk.Button(
+            term_frame, 
+            text="选择颜色", 
+            command=lambda: choose_color("term")
+        ).pack(side=tk.LEFT)
+        
+        # 段落总结颜色
+        ttk.Label(color_frame, text="段落总结高亮颜色", font=("Arial", 11, "bold")).grid(
+            row=4, column=0, sticky=tk.W, pady=(15, 5))
+        
+        summary_frame = ttk.Frame(color_frame)
+        summary_frame.grid(row=5, column=0, sticky=tk.W, pady=10)
+        
+        summary_preview = tk.Label(
+            summary_frame, 
+            text="  预览  ", 
+            bg=f"#{self.summary_color[0]:02x}{self.summary_color[1]:02x}{self.summary_color[2]:02x}",
+            width=15,
+            relief=tk.RAISED
+        )
+        summary_preview.pack(side=tk.LEFT, padx=(0, 10))
+        
+        ttk.Button(
+            summary_frame, 
+            text="选择颜色", 
+            command=lambda: choose_color("summary")
+        ).pack(side=tk.LEFT)
+        
+        # 重置为默认颜色
+        def reset_colors():
+            self.highlight_color = [255, 255, 0]
+            self.term_color = [128, 204, 255]
+            self.summary_color = [255, 179, 179]
+            highlight_preview.config(bg="#ffff00")
+            term_preview.config(bg="#80ccff")
+            summary_preview.config(bg="#ffb3b3")
+        
+        ttk.Button(
+            color_frame,
+            text="🔄 恢复默认颜色",
+            command=reset_colors
+        ).grid(row=6, column=0, pady=20)
+        
+        # 底部按钮
+        button_frame = ttk.Frame(settings_window, padding="10")
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        def save_and_close():
+            self.save_config()
+            messagebox.showinfo("保存成功", "设置已保存！", parent=settings_window)
+            settings_window.destroy()
+        
+        ttk.Button(
+            button_frame,
+            text="✅ 保存设置",
+            command=save_and_close,
+            width=20
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(
+            button_frame,
+            text="❌ 取消",
+            command=settings_window.destroy,
+            width=20
+        ).pack(side=tk.RIGHT, padx=5)
     
     def on_closing(self):
         """窗口关闭事件"""
