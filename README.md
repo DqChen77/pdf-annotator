@@ -1,213 +1,130 @@
-# PDF智能标注工具 🤖📄
+# PDF智能标注工具 
 
-一个使用AI自动分析和标注学术论文PDF的工具。它可以：
-- ✨ 自动识别论文中的关键观点和重要发现
-- 🖍️ 在PDF上高亮关键句子
-- 📝 在合适位置添加AI生成的总结注释
-- 📚 生成更便于阅读和理解的标注版PDF
+> **一键AI标注，让论文阅读效率提升10倍**  
+> 自动识别关键观点、专业术语、段落总结，生成三色标注PDF
 
-## 功能特点
+<div align="center">
+**原始论文** → **AI智能分析** → **标注版论文**
 
-- **智能识别**: 使用GPT-4等大语言模型分析论文内容
-- **精准标注**: 自动在重要观点处添加黄色高亮
-- **总结注释**: 为每个重要段落生成简洁的总结笔记
-- **保留原版**: 基于原PDF生成，保持原有格式和质量
-- **易于使用**: 简单的命令行界面
+### 🎨 三色高亮系统
 
-## 安装
+| 颜色 | 用途 | 数量 | 效果 |
+|------|------|------|------|
+| **黄色** | 关键观点 | 20-30个 | 高亮整句，悬停显示30-50字中文注释 |
+| **蓝色** | 专业术语 | 不限 | 高亮术语，悬停显示中文翻译+解释 |
+| **红色** | 段落总结 | 5-10个 | 标记段首，悬停显示40-80字段落大意 |
 
-### 1. 克隆或下载项目
+![demo](img/demo.png)
 
-```bash
-cd /Users/sokratis/Fudan/zzr/pdf_annotator
-```
+**原始论文**：密密麻麻的文字，不知从何下手  
+**标注后**：
 
-### 2. 安装依赖
+- **黄色高亮**：20-30个关键观点，快速抓住论文核心
+- **蓝色高亮**：所有专业术语，鼠标悬停显示中文翻译
+- **红色标记**：5-10个段落总结，理解每段核心内容
 
-```bash
-pip install -r requirements.txt
-```
+##  快速开始（两种方式）
 
-需要的主要依赖：
-- `PyMuPDF` (fitz): PDF处理
-- `openai`: OpenAI API调用
-- `python-dotenv`: 环境变量管理
-- `tqdm`: 进度条显示
+### 方式一：Releases(For Windows)
 
-### 3. 配置API密钥
+**界面功能**：
 
-创建 `.env` 文件（可以复制 `.env.example`）：
+1. 选择PDF文件
+2. 配置API密钥（首次使用）
+3. 打开"标注设置"自定义配置：
+   - 调整高亮颜色
+   - 设置关键观点数量（10-50个）
+   - 设置段落总结数量（3-20个）
+   - 选择术语标注积极程度
+4.  点击"开始标注"，实时查看进度
+5. 自动生成 `原文件名_annotated.pdf`
 
-```bash
-# .env 文件内容
-OPENAI_API_KEY=your_api_key_here
-OPENAI_MODEL=gpt-4
-# 如果使用其他API端点（如国内代理），可以设置：
-# OPENAI_BASE_URL=https://api.openai.com/v1
-```
-
-**获取OpenAI API密钥**: 访问 https://platform.openai.com/api-keys
-
-## 使用方法
-
-### 基本用法
+### 方式二：命令行 
 
 ```bash
+# 基本用法
 python main.py your_paper.pdf
-```
 
-这将在同一目录下生成 `your_paper_annotated.pdf`
-
-### 指定输出文件
-
-```bash
+# 指定输出文件
 python main.py input.pdf -o output.pdf
+
+# 使用不同模型
+python main.py paper.pdf --model gpt-4o
 ```
-
-### 使用不同的模型
-
-```bash
-# 使用GPT-3.5（更快，成本更低）
-python main.py paper.pdf --model gpt-3.5-turbo
-
-# 使用GPT-4（更准确，推荐）
-python main.py paper.pdf --model gpt-4
-```
-
-### 直接传入API密钥
-
-```bash
-python main.py paper.pdf --api-key sk-xxxxxxxxxxxxx
-```
-
-### 查看详细信息
-
-```bash
-python main.py paper.pdf -v
-```
-
-## 工作原理
-
-1. **PDF解析**: 使用PyMuPDF提取PDF中的文本和结构信息
-2. **文本分块**: 将论文内容按段落分块，便于AI处理
-3. **AI分析**: 调用OpenAI API分析每个文本块，识别关键观点
-4. **智能标注**: 
-   - 在关键句子上添加黄色高亮
-   - 在段落旁边添加总结注释
-5. **生成PDF**: 保存带有所有标注的新PDF文件
-
-## 项目结构
-
-```
-pdf_annotator/
-├── main.py              # 主程序入口
-├── config.py            # 配置文件
-├── pdf_reader.py        # PDF读取模块
-├── ai_analyzer.py       # AI分析模块
-├── pdf_annotator.py     # PDF标注模块
-├── requirements.txt     # Python依赖
-├── .env.example         # 环境变量示例
-└── README.md           # 说明文档
-```
-
-## 配置选项
-
-在 `config.py` 中可以自定义：
-
-- `MAX_TOKENS_PER_CHUNK`: 每次发送给AI的最大token数（默认2000）
-- `HIGHLIGHT_COLOR`: 高亮颜色（默认黄色）
-- `NOTE_COLOR`: 注释框颜色（默认蓝色）
-- `SYSTEM_PROMPT`: AI系统提示词
-- `ANALYSIS_PROMPT`: AI分析提示词模板
-
-## 注意事项
-
-⚠️ **API费用**: 
-- 使用OpenAI API会产生费用
-- GPT-4的成本约为 $0.03/1K tokens（输入）
-- 一篇20页的论文大约需要消耗 0.5-1美元
-- 建议先用短文档测试
-
-⚠️ **处理时间**:
-- 取决于论文长度和API响应速度
-- 一篇标准论文（20-30页）通常需要5-10分钟
-- 工具会显示进度条
-
-⚠️ **PDF格式**:
-- 最适合处理文本型PDF（非扫描版）
-- 扫描版PDF需要先进行OCR处理
-
-## 示例
-
-使用工作区中的PDF文件：
-
-```bash
-# 标注Embodied parenting论文
-python main.py "/Users/sokratis/Fudan/zzr/Embodied+parenting_25_10_06_13_20_20.pdf"
-
-# 标注Rilling & Young论文
-python main.py "/Users/sokratis/Fudan/zzr/Rilling+%26+Young%2C+2014.pdf" -o rilling_annotated.pdf
-```
-
-## 高级用法
-
-### 自定义提示词
-
-编辑 `config.py` 中的 `ANALYSIS_PROMPT`，可以调整AI分析的侧重点：
-
-```python
-ANALYSIS_PROMPT = """请分析以下论文片段，重点关注：
-1. 研究方法和实验设计
-2. 统计显著的发现
-3. 创新性观点
-
-论文片段：
-{text}
-
-请以JSON格式返回...
-"""
-```
-
-### 批量处理
-
-创建一个简单的bash脚本：
-
-```bash
-#!/bin/bash
-for pdf in *.pdf; do
-    python main.py "$pdf"
-done
-```
-
-## 故障排除
-
-### 问题：无法提取PDF文本
-- 检查PDF是否为扫描版
-- 尝试先用OCR工具处理
-
-### 问题：API调用失败
-- 检查API密钥是否正确
-- 检查网络连接
-- 如果在国内，可能需要设置代理
-
-### 问题：标注位置不准确
-- PyMuPDF的文本搜索有时不够精确
-- 可以尝试调整 `pdf_annotator.py` 中的搜索逻辑
-
-## 贡献
-
-欢迎提交Issue和Pull Request！
-
-## 许可证
-
-MIT License
-
-## 致谢
-
-- [PyMuPDF](https://pymupdf.readthedocs.io/) - 强大的PDF处理库
-- [OpenAI](https://openai.com/) - 提供AI能力
 
 ---
 
-**提示**: 这个工具特别适合需要快速了解大量论文的研究人员和学生。AI生成的标注可以作为第一遍阅读的辅助，帮助快速抓住重点！📚✨
+##  高级功能：完全可自定义
 
+### 标注设置面板
+
+在GUI中点击" 标注设置"，可以自定义：
+
+#### 数量设置
+- **关键观点高亮**：10-50个（默认20-30）
+- **段落总结**：3-20个（默认5-10）
+- **总结字数**：20-150字（默认40-80）
+
+####  颜色设置
+- **关键观点颜色**：可视化颜色选择器
+- **术语颜色**：自定义高亮颜色
+- **总结标记颜色**：个性化配色
+
+#### 术语标注级别
+- **保守**：只标注核心专业术语（oxytocin, amygdala等）
+- **适中**（推荐）：专业术语+较难词汇（8+字母）
+- **积极**：标注所有可能困难的词汇
+
+### 配置自动保存
+
+所有设置自动保存到 `gui_config.json`，下次启动自动加载。
+
+---
+
+## 🤝 贡献
+
+欢迎贡献代码、报告Bug、提出建议！
+
+```bash
+# Fork本项目
+# 创建特性分支
+git checkout -b feature/AmazingFeature
+
+# 提交更改
+git commit -m 'Add some AmazingFeature'
+
+# 推送到分支
+git push origin feature/AmazingFeature
+
+# 打开Pull Request
+```
+
+---
+
+## 📄 许可证
+
+MIT License - 自由使用、修改、分发
+
+---
+
+## 🙏 致谢
+
+- [PyMuPDF](https://pymupdf.readthedocs.io/) - 强大的PDF处理库
+- [OpenAI](https://openai.com/) - 提供AI能力
+- [tiktoken](https://github.com/openai/tiktoken) - Token计算工具
+
+---
+
+## 💬 联系方式
+
+- 📧 Email: 2091984032@qq.com
+- 🐛 Issues: [GitHub Issues](https://github.com/DqChen77/pdf-annotator/issues)
+- 💬 讨论: [GitHub Discussions](https://github.com/DqChen77/pdf-annotator/discussions)
+
+---
+
+<div align="center">
+
+**⭐ 如果这个工具对你有帮助，请给个Star！**
+
+让AI成为你的论文阅读助手 📚🤖✨
